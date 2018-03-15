@@ -124,6 +124,16 @@ def facebook_token(request):
     }
 
     resp = requests.get(url, params=params)
+    if resp.status_code == 400:
+        response_body = resp.json()
+        logger.error("Facebook Token Validation Failed: {}".format(response_body))
+        error_details = {
+            'name': 'code',
+            'location': 'querystring',
+            'description': 'Facebook OAuth code validation failed.'
+        }
+        raise_invalid(request, **error_details)
+
     try:
         resp.raise_for_status()
     except requests.exceptions.HTTPError as e:
@@ -131,15 +141,6 @@ def facebook_token(request):
         raise httpexceptions.HTTPServiceUnavailable()
     else:
         response_body = resp.json()
-        if 'access_token' in response_body:
-            access_token = response_body['access_token']
-        else:
-            logger.error("Facebook Token Validation Failed: " + response_body)
-            error_details = {
-                'name': 'code',
-                'location': 'querystring',
-                'description': 'Facebook OAuth code validation failed.'
-            }
-            raise_invalid(request, **error_details)
+        access_token = response_body['access_token']
 
     return httpexceptions.HTTPFound(location='%s%s' % (stored_redirect, access_token))

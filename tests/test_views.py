@@ -1,7 +1,9 @@
 import mock
+import requests
+from requests.exceptions import HTTPError
 import unittest
-from urllib.parse import parse_qs, urlparse
 import webtest
+from urllib.parse import parse_qs, urlparse
 
 import kinto.core
 from kinto.core.errors import ERRORS
@@ -68,6 +70,7 @@ class BaseWebTest(object):
 
     def get_app_settings(self, additional_settings=None):
         settings = kinto.core.DEFAULT_SETTINGS.copy()
+        settings['project_name'] = 'kinto'
         settings['includes'] = 'kinto_facebook'
         settings['multiauth.policies'] = 'facebook'
         authn = 'kinto_facebook.authentication.FacebookAuthenticationPolicy'
@@ -244,6 +247,24 @@ class TokenViewTest(FormattedErrorMixin, BaseWebTest, unittest.TestCase):
         self.assertEqual(r.status_code, 302)
         self.assertEqual(r.headers['Location'],
                          'http://foobar?token=oauth-token')
+
+    def tests_return_503_if_facebook_auth_server_behaves_badly(self):
+        self.facebook_trade.get.return_value.raise_for_status.side_effect = HTTPError
+        self.facebook_trade.exceptions.HTTPError = HTTPError
+
+        self.app.app.registry.cache.set('abc', 'http://foobar', ttl=1)
+        url = '{url}?state=abc&code=1234'.format(url=self.url)
+        self.app.get(url, status=503)
+
+    def tests_return_400_if_client_error_detected(self):
+        httpBadRequest = mock.MagicMock()
+        httpBadRequest.status_code = 400
+        httpBadRequest.json.return_value = {"error": "blah"}
+        self.facebook_trade.get.return_value = httpBadRequest
+
+        self.app.app.registry.cache.set('abc', 'http://foobar', ttl=1)
+        url = '{url}?state=abc&code=1234'.format(url=self.url)
+        self.app.get(url, status=400)
 
 
 class CapabilityTestView(BaseWebTest, unittest.TestCase):

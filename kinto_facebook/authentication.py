@@ -86,7 +86,10 @@ class FacebookAuthenticationPolicy(base_auth.CallbackAuthenticationPolicy):
                     raise httpexceptions.HTTPServiceUnavailable()
                 else:
                     body = resp.json()
-                    payload = body['data']
+                    if not body['data']['is_valid']:
+                        payload = {}
+                    else:
+                        payload = body['data']
 
             request.registry.cache.set(cache_key, payload, ttl=cache_ttl)
 

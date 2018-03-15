@@ -2,7 +2,10 @@ import time
 import unittest
 
 import mock
+import pytest
 import requests
+from pyramid import httpexceptions
+
 from kinto.core.cache import memory as memory_backend
 from kinto.core.testing import DummyRequest
 
@@ -75,6 +78,12 @@ class FacebookAuthenticationPolicyTest(unittest.TestCase):
         self.assertIn("33", principals)
 
     @mock.patch('kinto_facebook.authentication.requests')
+    def test_oauth_handle_invalid_tokens(self, api_mocked):
+        api_mocked.get.return_value.json.return_value = {"data": {'is_valid': False}}
+        principals = self.policy.effective_principals(self.request)
+        self.assertNotIn("33", principals)
+
+    @mock.patch('kinto_facebook.authentication.requests')
     def test_oauth_verification_is_cached(self, api_mocked):
         api_mocked.get.return_value.json.return_value = {"data": self.profile_data}
         # First request from client.
@@ -122,6 +131,16 @@ class FacebookAuthenticationPolicyTest(unittest.TestCase):
         self.policy.authenticated_userid(request)
         # Cache backend key was expired.
         self.assertEqual(2, api_mocked.get.call_count)
+
+    @mock.patch('kinto_facebook.authentication.requests')
+    def test_handle_facebook_server_misbehaviours(self, request_mock):
+        request_mock.get.return_value.raise_for_status.side_effect = requests.exceptions.HTTPError
+        # Since we mock requests, we need to provide requests.exceptions here too
+        request_mock.exceptions.HTTPError = requests.exceptions.HTTPError
+
+        with pytest.raises(httpexceptions.HTTPServiceUnavailable):
+            request = self._build_request()
+            self.policy.authenticated_userid(request)
 
     def test_forget_uses_realm(self):
         policy = authentication.FacebookAuthenticationPolicy(realm='Who')
