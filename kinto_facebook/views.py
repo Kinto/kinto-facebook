@@ -71,7 +71,6 @@ def authorized_redirect(req, **kwargs):
 def facebook_login(request):
     """Helper to redirect client towards Facebook login form."""
     state = persist_state(request)
-    redirect_uri = request.validated['querystring']['redirect']
 
     params = {
         'client_id': facebook_conf(request, 'client_id'),
