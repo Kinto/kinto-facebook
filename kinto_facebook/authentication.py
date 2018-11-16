@@ -81,7 +81,7 @@ class FacebookAuthenticationPolicy(base_auth.CallbackAuthenticationPolicy):
                 resp = requests.get(url, params=params)
                 try:
                     resp.raise_for_status()
-                except requests.exceptions.HTTPError as e:
+                except requests.exceptions.HTTPError:
                     logger.exception("Facebook Token Protocol Error")
                     raise httpexceptions.HTTPServiceUnavailable()
                 else:

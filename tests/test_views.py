@@ -1,5 +1,4 @@
 import mock
-import requests
 from requests.exceptions import HTTPError
 import unittest
 import webtest
