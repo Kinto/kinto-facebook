@@ -4,7 +4,7 @@ flake8
 mock
 pytest
 pytest-cache
-pytest-cover
+pytest-cov
 pytest-sugar
 pytest-watch
 webtest
